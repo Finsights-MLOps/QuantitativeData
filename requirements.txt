@@ -1,0 +1,6 @@
+pandas
+sec_edgar_api
+yfinance
+numpy
+edgartools
+openai
