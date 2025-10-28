@@ -5,6 +5,11 @@ from sec_edgar_api import EdgarClient
 from datetime import date
 import json
 import requests
+import boto3
+
+session = boto3.session.Session(profile_name='Finsights')
+s3_client = session.client('s3')
+
 
 # -------------------- XBRL_TAGS --------------------
 XBRL_TAGS = {
@@ -178,7 +183,7 @@ def extract_companies(n=None):
         res.raise_for_status()
         data = res.json()
     except Exception as e:
-        print(f"❌ Failed to fetch company tickers: {e}")
+        print(f"Failed to fetch company tickers: {e}")
         return {}
 
     companies = {}
@@ -192,7 +197,7 @@ def extract_companies(n=None):
         if ticker and cik:
             companies[ticker] = str(cik).zfill(10)
         else:
-            print(f"⚠️ Missing ticker/CIK in entry: {entry}")
+            print(f"Missing ticker/CIK in entry: {entry}")
     return companies
 
 # -------------------- Safe Division --------------------
@@ -222,11 +227,11 @@ def get_company_metrics_json(cik: str, ticker: str, user_agent: str, years=None,
             facts = client.get_company_facts(cik=cik)
             break
         except Exception as e:
-            print(f"⚠️ Attempt {attempt+1} failed for {ticker}: {e}")
+            print(f"Attempt {attempt+1} failed for {ticker}: {e}")
             if attempt < retries - 1:
                 time.sleep(sleep_time * (attempt + 1))
             else:
-                print(f"❌ Skipping {ticker} after {retries} failed attempts.")
+                print(f" Skipping {ticker} after {retries} failed attempts.")
                 return []
 
     data = []
@@ -278,7 +283,7 @@ def get_company_metrics_json(cik: str, ticker: str, user_agent: str, years=None,
     for col in expected_cols:
         if col not in df_pivot.columns:
             df_pivot[col] = np.nan
-            print(f"⚠️ Column missing for {ticker}: {col} -> filled with NaN")
+            print(f" Column missing for {ticker}: {col} -> filled with NaN")
 
     # Derived metrics calculations
     df_pivot["Return on Assets (ROA) %"] = safe_div(df_pivot.get("income_stmt_Net Income"), df_pivot.get("balance_sheet_Total Assets")) * 100
@@ -319,19 +324,53 @@ def get_company_metrics_json(cik: str, ticker: str, user_agent: str, years=None,
 
     return json_data
 
+def save_to_s3(json_data, bucket_name="sentence-data-ingestion", folder_name="QuantitativeData"):
+        
+    """
+    Uploads metrics JSON data to S3 bucket under the specified subfolder.
+    File name includes timestamp for traceability.
+    """
+    import io
+    import json
+    import datetime
+
+    try:
+        # Create timestamped file name
+        timestamp = datetime.datetime.now().strftime("%Y%m%d")
+        file_name = f"{folder_name}/metrics_{timestamp}.json"
+
+        # Convert Python object to JSON string
+        json_bytes = json.dumps(json_data, indent=4).encode("utf-8")
+
+        # Upload JSON to S3
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=file_name,
+            Body=json_bytes,
+            ContentType="application/json"
+        )
+
+        print(f"Successfully uploaded metrics to s3://{bucket_name}/{file_name}")
+        return f"s3://{bucket_name}/{file_name}"
+
+    except Exception as e:
+        print(f"Failed to upload metrics to S3: {e}")
+        return None
+
+
 # ------------------- Example Usage -------------------
 if __name__ == "__main__":
     user_agent = "Karthik Raja (University Project; karthikraja.ai.project@gmail.com)"
     year = date.today().year
     all_json = []
 
-    n = 50  # Number of companies
+    n = 2  # Number of companies
     companies = extract_companies(n)
     # Optionally, manually override companies
     # companies = {"AAPL": "0000320193"}
 
     for ticker, cik in companies.items():
-        print(f"📊 Fetching {ticker}...")
+        print(f"Fetching {ticker}...")
         company_json = get_company_metrics_json(cik, ticker, user_agent, years=range(1900, year))
         all_json.extend(company_json)
         time.sleep(2)
@@ -339,4 +378,7 @@ if __name__ == "__main__":
     with open("metrics.json", "w") as f:
         json.dump(all_json, f, indent=4)
 
-    print("✅ Saved clean JSON for RAG embedding with filing dates.")
+     # SAVING TO S3   
+    save_to_s3(all_json)
+
+    print("Saved clean JSON for RAG embedding with filing dates.")
