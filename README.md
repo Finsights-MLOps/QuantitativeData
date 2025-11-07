@@ -48,17 +48,13 @@ Two potential output paths:
 ## Project Structure
 
 ```
-project/
-├── data/
-│   ├── raw/              # Raw SEC filings data
-│   └── processed/        # Processed metrics
-├── src/
+DataPipeline/
+├── src_metrics/
 │   ├── ingestion/        # EDGAR SDK integration
-│   ├── processors/       # Metric calculation logic
-│   ├── derivations/      # Derived metrics formulas
-│   └── output/           # Database/RAG formatting
+│   ├── preprocessing/       # Metric calculation logic
+│   ├── loading/      # Loading data into S3
 ├── config/
-│   └── metrics_config.yaml
+│   └── metrics_config.yaml # RAG statements on the metrics
 └── README.md
 ```
 
