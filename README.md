@@ -50,12 +50,12 @@ Two potential output paths:
 ```
 DataPipeline/
 ├── src_metrics/
-│   ├── ingestion/        # EDGAR SDK integration
-│   ├── preprocessing/       # Metric calculation logic
-│   ├── loading/      # Loading data into S3
-├── config/
-│   └── metrics_config.yaml # RAG statements on the metrics
-└── README.md
+│   ├── data_ingestion.py      # EDGAR SDK integration
+│   ├── data_preprocessing.py       # Metric calculation logic
+│   ├── data_loading.py      # Loading data into S3
+│   ├── config.py     # RAG statements on the metrics
+│   ├── README.md   
+
 ```
 
 ## Key Features
