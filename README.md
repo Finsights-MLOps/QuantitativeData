@@ -2,7 +2,7 @@
 
 # Financial Metrics Processing System
 
-# Financial Workflow Diagram : 
+### Financial Workflow Diagram : 
 
 ## Overview
 
